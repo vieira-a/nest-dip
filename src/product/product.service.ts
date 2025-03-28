@@ -4,9 +4,10 @@ import {
   IProductRepository,
   PRODUCT_REPOSITORY,
 } from './product-repository.interface';
+import { IProductService } from './product-service-interface';
 
 @Injectable()
-export class ProductService {
+export class ProductService implements IProductService {
   constructor(
     @Inject(PRODUCT_REPOSITORY)
     private readonly productRepository: IProductRepository,
