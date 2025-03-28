@@ -1,12 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { OrderRepository } from './order.repository';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Order } from './order';
 import { ProductService } from '../product/product.service';
+import {
+  IOrderRepository,
+  ORDER_REPOSITORY,
+} from './order-repository.interface';
 
 @Injectable()
 export class OrderService {
   constructor(
-    private readonly repository: OrderRepository,
+    @Inject(ORDER_REPOSITORY)
+    private readonly repository: IOrderRepository,
     private readonly productService: ProductService,
   ) {}
 

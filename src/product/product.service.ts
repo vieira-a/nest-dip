@@ -1,16 +1,22 @@
-import { Injectable } from '@nestjs/common';
-import { ProductRepository } from './product.repository';
+import { Inject, Injectable } from '@nestjs/common';
 import { Product } from './product';
+import {
+  IProductRepository,
+  PRODUCT_REPOSITORY,
+} from './product-repository.interface';
 
 @Injectable()
 export class ProductService {
-  constructor(private readonly productRepository: ProductRepository) {}
+  constructor(
+    @Inject(PRODUCT_REPOSITORY)
+    private readonly productRepository: IProductRepository,
+  ) {}
 
   create(product: Product): Product {
     return this.productRepository.create(product);
   }
 
-  findById(id: string): Product | undefined {
+  findById(id: string): Product | null {
     return this.productRepository.findById(id);
   }
 }
