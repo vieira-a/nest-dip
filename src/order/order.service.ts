@@ -1,17 +1,21 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Order } from './order';
-import { ProductService } from '../product/product.service';
 import {
   IOrderRepository,
   ORDER_REPOSITORY,
 } from './order-repository.interface';
+import {
+  IProductService,
+  PRODUCT_SERVICE,
+} from '../product/product-service-interface';
 
 @Injectable()
 export class OrderService {
   constructor(
     @Inject(ORDER_REPOSITORY)
     private readonly repository: IOrderRepository,
-    private readonly productService: ProductService,
+    @Inject(PRODUCT_SERVICE)
+    private readonly productService: IProductService,
   ) {}
 
   create(order: Order): Order {

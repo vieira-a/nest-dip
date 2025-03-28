@@ -7,19 +7,23 @@ import {
 import { OrderRepository } from './order.repository';
 import { ProductService } from '../product/product.service';
 import {
-  IProductRepository,
-  PRODUCT_REPOSITORY,
-} from '../product/product-repository.interface';
+  IProductService,
+  PRODUCT_SERVICE,
+} from '../product/product-service-interface';
 
 describe('OrderService', () => {
   let service: OrderService;
   let repository: IOrderRepository;
-  let productRepository: IProductRepository;
+  let productService: IProductService;
 
   beforeEach(async () => {
-    const mockProductRepository: IProductRepository = {
+    const mockProductService: IProductService = {
       create: jest.fn(),
       findById: jest.fn(),
+    };
+
+    const mockOrderRepository: IOrderRepository = {
+      create: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -27,18 +31,18 @@ describe('OrderService', () => {
         OrderService,
         {
           provide: ORDER_REPOSITORY,
-          useClass: OrderRepository,
+          useValue: mockOrderRepository,
         },
-        ProductService,
         {
-          provide: PRODUCT_REPOSITORY,
-          useValue: mockProductRepository,
+          provide: PRODUCT_SERVICE,
+          useValue: mockProductService,
         },
       ],
     }).compile();
+
     service = module.get<OrderService>(OrderService);
     repository = module.get<IOrderRepository>(ORDER_REPOSITORY);
-    productRepository = module.get<IProductRepository>(PRODUCT_REPOSITORY);
+    productService = module.get<IProductService>(PRODUCT_SERVICE);
   });
 
   it('should be defined', () => {
