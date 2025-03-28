@@ -4,8 +4,6 @@ import {
   IOrderRepository,
   ORDER_REPOSITORY,
 } from './order-repository.interface';
-import { OrderRepository } from './order.repository';
-import { ProductService } from '../product/product.service';
 import {
   IProductService,
   PRODUCT_SERVICE,
