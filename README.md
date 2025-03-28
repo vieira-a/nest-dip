@@ -15,6 +15,8 @@ Esta documentação discute ambas as implementações, destacando suas vantagens
 
 [Branch do repositório](https://github.com/vieira-a/nest-dip/tree/direct-dependency)
 
+![DirectDependency](/docs/img/DependencyInjection-direct_dependency.png)
+
 ### Exemplo de implementação
 
 ```typescript
@@ -91,6 +93,8 @@ describe('OrderService', () => {
 ## CASO 2. Uso de Interfaces e Tokens com DIP (Dependency Injection Principle, o "D" do SOLID)
 
 [Branch do repositório](https://github.com/vieira-a/nest-dip/tree/dependency-inversion)
+
+![DependencyInversion](/docs/img/DependencyInjection-dependency_inversion.png)
 
 ### Exemplo de implementação
 
