@@ -1,98 +1,250 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Boas práticas para implementações de dependências no Nest.js
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Introdução
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Ao desenvolver aplicações com Nest.js, é comum nos depararmos com a necessidade de gerenciar dependências entre módulos e serviços. Duas abordagens principais podem ser utilizadas para estruturar essas dependências:
 
-## Description
+1. **Injeção direta da implementação concreta**
+2. **Uso de interfaces e tokens com o princípio de Inversão de Dependência (DIP - Dependency Inversion Principle)**
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Esta documentação discute ambas as implementações, destacando suas vantagens e desvantagens.
 
-## Project setup
+É apenas um exemplo de aplicação, portanto, é irrelevante a organização de arquivos e diretórios bem como os recursos de implementação; o foco aqui é aplicar de forma prática o **Pricípio da Inversão de Dependência**, melhorando a comunicação entre módulos/funcionalidades.
 
-```bash
-$ npm install
+## CASO 1. Injeção direta da implementação concreta
+
+### Exemplo de implementação
+
+```typescript
+@Injectable()
+export class OrderService {
+  constructor(
+    private readonly repository: OrderRepository,
+    private readonly productService: ProductService,
+  ) {}
+
+  create(order: Order): Order {
+    const product = this.productService.findById(order.productId);
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+    return this.repository.create(order);
+  }
+}
 ```
 
-## Compile and run the project
+O `OrderModule` precisa importar **todas** as dependências do `ProductService`
 
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+```typescript
+@Module({
+  providers: [OrderService, OrderRepository, ProductService, ProductRepository],
+})
+export class OrderModule {}
 ```
 
-## Run tests
+O teste do `OrderService` também precisa importar **todas** as dependências do `ProductService`
 
-```bash
-# unit tests
-$ npm run test
+```typescript
+describe('OrderService', () => {
+  let service: OrderService;
+  let repository: OrderRepository;
+  let productService: ProductService;
+  let productRepository: ProductRepository;
 
-# e2e tests
-$ npm run test:e2e
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        OrderRepository,
+        OrderService,
+        ProductRepository,
+        ProductService,
+      ],
+    }).compile();
+    service = module.get<OrderService>(OrderService);
+    repository = module.get<OrderRepository>(OrderRepository);
+    productService = module.get<ProductService>(ProductService);
+    productRepository = module.get<ProductRepository>(ProductRepository);
+  });
 
-# test coverage
-$ npm run test:cov
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+});
 ```
 
-## Deployment
+### Vantagens
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+- **Simplicidade**: o código é mais fácil de entender e configurar.
+- **Menos configuração**: Não é necessário definir tokens ou interfaces adicionais.
+- **Boa para pequenos projetos**: Se a aplicação não for muito complexa, essa abordagem pode ser suficiente.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Desvantagens
 
-```bash
-$ npm install -g mau
-$ mau deploy
+- **Acoplamento forte**: `OrderService` depende diretamente da implementação concreta de `ProductService`, dificultando futuras alterações.
+- **Dificuldade para testes**: É necessário carregar toda a implementação real dos serviços ao testar `OrderService`, tornando os testes menos isolados.
+- **Pouca flexibilidade**: Se precisarmos substituir `ProductRepository` por outra implementação (por exemplo, um repositório que consulta um cache), será necessário modificar diretamente os serviços.
+
+---
+
+## CASO 2. Uso de Interfaces e Tokens com DIP (Dependency Injection Principle, o "D" do SOLID)
+
+### Exemplo de implementação
+
+1. Criando uma Interface para o `ProductService`
+
+```typescript
+export const PRODUCT_SERVICE = Symbol('PRODUCT_SERVICE');
+
+export interface IProductService {
+  create(product: Product): Product;
+  findById(id: string): Product | null;
+}
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+2. Modificando a classe `ProductService` para implementa a nova interface criada
 
-## Resources
+```typescript
+@Injectable()
+export class ProductService implements IProductService {
+  constructor(
+    @Inject(PRODUCT_REPOSITORY)
+    private readonly productRepository: IProductRepository,
+  ) {}
 
-Check out a few resources that may come in handy when working with NestJS:
+  create(product: Product): Product {
+    // Lógica para criar produto
+  }
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+  findById(id: string): Product | null {
+    // Lógica para buscar produto
+  }
+}
+```
 
-## Support
+3. Exportando os recuros que serão utilizados pelo `OrderService`
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```typescript
+@Module({
+  providers: [
+    ProductService,
+    {
+      provide: PRODUCT_SERVICE,
+      useClass: ProductService,
+    },
+    {
+      provide: PRODUCT_REPOSITORY,
+      useClass: ProductRepository,
+    },
+  ],
+  exports: [PRODUCT_SERVICE],
+})
+export class ProductModule {}
+```
 
-## Stay in touch
+4. Ao importar o `ProductModule`, o `OrderService` terá acesso ao recurso provido pelo `ProductService` através do token `PRODUCT_SERVICE` que corresponde à interface implementada pelo `ProductService`.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```typescript
+@Module({
+  imports: [ProductModule],
+  providers: [
+    OrderService,
+    {
+      provide: ORDER_REPOSITORY,
+      useClass: OrderRepository,
+    },
+  ],
+})
+export class OrderModule {}
+```
 
-## License
+5. Injetando a abstração ao invés da classe concreta
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```typescript
+@Injectable()
+export class OrderService {
+  constructor(
+    @Inject(ORDER_REPOSITORY)
+    private readonly repository: IOrderRepository,
+    @Inject(PRODUCT_SERVICE)
+    private readonly productService: IProductService,
+  ) {}
+
+  create(order: Order): Order {
+    const product = this.productService.findById(order.productId);
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    return this.repository.create(order);
+  }
+}
+```
+
+6. Observe que o teste não precisa mais carregar a classe concreta, mas sim a abstração que pode ser mockada.
+
+```typescript
+describe('OrderService', () => {
+  let service: OrderService;
+  let repository: IOrderRepository;
+  let productService: IProductService;
+
+  beforeEach(async () => {
+    const mockProductService: IProductService = {
+      create: jest.fn(),
+      findById: jest.fn(),
+    };
+
+    const mockOrderRepository: IOrderRepository = {
+      create: jest.fn(),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        OrderService,
+        {
+          provide: ORDER_REPOSITORY,
+          useValue: mockOrderRepository,
+        },
+        {
+          provide: PRODUCT_SERVICE,
+          useValue: mockProductService,
+        },
+      ],
+    }).compile();
+
+    service = module.get<OrderService>(OrderService);
+    repository = module.get<IOrderRepository>(ORDER_REPOSITORY);
+    productService = module.get<IProductService>(PRODUCT_SERVICE);
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+});
+```
+
+### Vantagens
+
+- **Desacoplamento**: `OrderService` não depende diretamente de `ProductService`, mas sim de uma interface, permitindo que a implementação real seja alterada facilmente.
+- **Facilidade para testes**: No teste de `OrderService`, podemos mockar `IProductService` sem precisar carregar toda a lógica real de `ProductService`.
+
+### Desvantagens
+
+- **Maior complexidade inicial**: É necessário configurar interfaces e tokens, o que pode aumentar a curva de aprendizado para desenvolvedores iniciantes.
+- **Mais boilerplate**: É necessário criar e gerenciar tokens e interfaces, aumentando a quantidade de código.
+
+---
+
+## Conclusão
+
+A escolha entre as duas abordagens depende do contexto do projeto:
+
+- Para **pequenos projetos ou MVPs**, a injeção direta da implementação concreta pode ser mais simples e rápida.
+- Para **projetos maiores, escaláveis e modulares**, a abordagem baseada em interfaces e DIP é mais vantajosa, pois reduz o acoplamento, melhora a testabilidade e aumenta a flexibilidade da arquitetura.
+
+Em aplicações de grande porte, onde as dependências podem mudar ao longo do tempo, **usar interfaces e tokens** é a melhor escolha, pois permite substituir implementações sem impactar diretamente os serviços que as utilizam. Essa abordagem segue os princípios SOLID e melhora a manutenção e expansão do código a longo prazo.
+
+#### Autor
+
+[Anderson Vieira](@vieira-a)
