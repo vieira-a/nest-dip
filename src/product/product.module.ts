@@ -16,6 +16,6 @@ import { PRODUCT_SERVICE } from './product-service-interface';
       useClass: ProductRepository,
     },
   ],
-  exports: [ProductService, PRODUCT_REPOSITORY, PRODUCT_SERVICE],
+  exports: [PRODUCT_SERVICE],
 })
 export class ProductModule {}
